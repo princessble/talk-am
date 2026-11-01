@@ -40,7 +40,7 @@ def make_scene(scene: dict, main_character: str, reference: str | None, folder: 
             best = attempts[-1]
         if verdict["passed"]:
             break
-        if verdict.get("better_prompt"):
+        if verdict.get("better_prompt") and attempt < MAX_TRIES:
             prompt = verdict["better_prompt"]
             print("  Fixing the prompt and trying again...")
 
