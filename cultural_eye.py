@@ -37,7 +37,9 @@ An independent viewer looked at the image WITHOUT knowing the story and wrote:
 
 Steps:
 1. Pick the single most important action or object from the creator's words
-   (for example "opening her shop" or "giving extra to a customer").
+   that a camera could actually show (for example "opening her shop" or
+   "giving extra to a customer"). If the words are a slogan, an opinion or a
+   time of day, pick the closest thing a photo can show, and judge only that.
 2. Decide if the independent viewer's description clearly shows that key action.
    If they did not mention it, it is NOT clearly shown.
 3. Look at the image yourself to check the Nigerian setting, the character and
