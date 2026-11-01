@@ -165,14 +165,14 @@ def make_video(plan: dict, voice_in: str, folder: str = "output", say=print) -> 
     fade_out = max(duration - 0.6, 0)
     chain.append(
         f"[{label}]subtitles={captions},"
-        f"fade=t=in:st=0:d=0.4,fade=t=out:st={fade_out:.2f}:d=0.6[vout]"
+        f"fade=t=in:st=0:d=0.4,fade=t=out:st={fade_out:.2f}:d=0.6,format=yuv420p[vout]"
     )
     run([
         "ffmpeg", "-y", *inputs, "-i", wav,
         "-filter_complex", ";".join(chain),
         "-af", f"afade=t=out:st={fade_out:.2f}:d=0.6",
         "-map", "[vout]", "-map", f"{len(clips)}:a",
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-b:a", "160k", "-shortest", "-movflags", "+faststart",
         out,
     ])
