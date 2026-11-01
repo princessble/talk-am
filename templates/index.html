@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Talk Am · Send a voice note, get a video</title>
+  <style>
+    :root {
+      --green: #0e3b2c;
+      --green-2: #155c43;
+      --gold: #f2b705;
+      --cream: #fbf6ec;
+      --ink: #1d1d1b;
+      --muted: #6b6559;
+      --line: #e6dccb;
+      --pass: #1f8a4c;
+      --redo: #c9621b;
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--cream);
+      color: var(--ink);
+      line-height: 1.5;
+    }
+    header {
+      background: var(--green);
+      color: #fff;
+      padding: 28px 20px 34px;
+      text-align: center;
+      border-bottom: 6px solid var(--gold);
+    }
+    header h1 { margin: 0; font-size: 2.6rem; letter-spacing: -0.5px; }
+    header h1 span { color: var(--gold); }
+    header p { margin: 6px 0 0; opacity: 0.9; font-size: 1.05rem; }
+    main { max-width: 980px; margin: 0 auto; padding: 24px 16px 60px; }
+    .card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 22px;
+      margin-bottom: 22px;
+      box-shadow: 0 2px 10px rgba(14, 59, 44, 0.05);
+    }
+    .card h2 { margin: 0 0 4px; font-size: 1.3rem; color: var(--green); }
+    .hint { color: var(--muted); margin: 0 0 14px; font-size: 0.95rem; }
+    label { display: block; font-weight: 600; margin: 14px 0 6px; }
+    textarea, input[type=password] {
+      width: 100%;
+      border: 1.5px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font: inherit;
+      background: #fffdf8;
+    }
+    textarea { min-height: 150px; resize: vertical; }
+    textarea:focus, input:focus { outline: 2px solid var(--gold); border-color: var(--gold); }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .drop {
+      border: 2px dashed var(--line);
+      border-radius: 12px;
+      padding: 18px;
+      text-align: center;
+      cursor: pointer;
+      background: #fffdf8;
+      color: var(--muted);
+    }
+    .drop.has-file { border-color: var(--green-2); color: var(--green); font-weight: 600; }
+    .drop input { display: none; }
+    button {
+      font: inherit;
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 22px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .primary { background: var(--gold); color: var(--green); font-size: 1.05rem; margin-top: 18px; }
+    .primary:disabled { opacity: 0.5; cursor: wait; }
+    .ghost { background: transparent; color: var(--green-2); border: 1.5px solid var(--green-2); padding: 6px 14px; font-size: 0.85rem; }
+    .error { color: #b3261e; font-weight: 600; margin-top: 10px; }
+
+    .steps { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 16px; }
+    .step {
+      flex: 1 1 160px;
+      border: 1.5px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+    .step b { display: block; color: var(--ink); }
+    .step.active { border-color: var(--gold); background: #fff8e1; }
+    .step.done { border-color: var(--pass); background: #eef8f1; }
+    .step.done b::after { content: " ✓"; color: var(--pass); }
+
+    .now { font-weight: 600; color: var(--green-2); min-height: 1.5em; }
+    .now::before { content: "● "; color: var(--gold); animation: pulse 1s infinite; }
+    .now.idle::before { content: ""; }
+    @keyframes pulse { 50% { opacity: 0.2; } }
+
+    .scene { border-top: 1px solid var(--line); padding: 16px 0 6px; }
+    .scene h3 { margin: 0; font-size: 1rem; }
+    .scene .words { font-style: italic; color: var(--muted); margin: 2px 0 10px; }
+    .tries { display: flex; gap: 14px; flex-wrap: wrap; }
+    .try {
+      width: 210px;
+      border: 1.5px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #fffdf8;
+      position: relative;
+    }
+    .try img { width: 100%; aspect-ratio: 9 / 16; object-fit: cover; display: block; background: #eee; }
+    .try .wait { aspect-ratio: 9 / 16; display: grid; place-items: center; color: var(--muted); font-size: 0.9rem; }
+    .try .info { padding: 8px 10px 10px; font-size: 0.82rem; }
+    .badge {
+      display: inline-block;
+      color: #fff;
+      border-radius: 999px;
+      padding: 1px 9px;
+      font-weight: 700;
+      font-size: 0.78rem;
+    }
+    .badge.pass { background: var(--pass); }
+    .badge.redo { background: var(--redo); }
+    .try.kept { border-color: var(--gold); box-shadow: 0 0 0 3px #f2b70555; }
+    .try.kept::after {
+      content: "★ Kept";
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      background: var(--gold);
+      color: var(--green);
+      font-weight: 800;
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+    .try ul { margin: 6px 0 0; padding-left: 16px; }
+    .blind { color: var(--muted); margin-top: 6px; }
+    .blind b { color: var(--ink); }
+
+    video { width: 100%; max-width: 360px; border-radius: 14px; display: block; margin: 8px auto; background: #000; }
+    .result { text-align: center; }
+    .download { display: inline-block; margin-top: 10px; background: var(--green); color: #fff; text-decoration: none; border-radius: 999px; padding: 10px 22px; font-weight: 700; }
+
+    details { margin-top: 12px; }
+    pre {
+      background: #10241c;
+      color: #d9f2e4;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow: auto;
+    }
+    .hidden { display: none; }
+    footer { text-align: center; color: var(--muted); font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Talk <span>Am</span></h1>
+    <p>Talk am. We go show am. Send a voice note, get a video.</p>
+  </header>
+
+  <main>
+    <section class="card" id="form-card">
+      <h2>1. Your story</h2>
+      <p class="hint">Write it the way you talk: Nigerian English or Pidgin. Your words stay exactly as you wrote them.</p>
+      <form id="form">
+        <div class="row" style="justify-content: space-between;">
+          <label for="script" style="margin: 0;">Script</label>
+          <button type="button" class="ghost" id="example">Use the Mama Ngozi example</button>
+        </div>
+        <textarea id="script" name="script" maxlength="1500" placeholder="Mama Ngozi don open her shop for Ariaria market!..." required></textarea>
+
+        <label>Voice note</label>
+        <label class="drop" id="drop">
+          <input type="file" id="voice" name="voice" accept="audio/*,.m4a,.mp3,.ogg,.opus,.wav,.amr,.mp4">
+          <span id="drop-text">Tap to add your voice note (.m4a, .mp3, .ogg, .wav)</span>
+        </label>
+
+        {% if needs_passcode %}
+        <label for="passcode">Passcode</label>
+        <input type="password" id="passcode" name="passcode" placeholder="Ask the creator for the passcode">
+        {% endif %}
+
+        <button class="primary" id="go" type="submit">Make my video</button>
+        <div class="error" id="error"></div>
+      </form>
+    </section>
+
+    <section class="card hidden" id="work-card">
+      <h2>2. Watch the agent work</h2>
+      <p class="hint">Each picture is checked by Cultural Eye. It looks at the picture blind first, then judges it against your words. If it isn't right, it fixes the prompt and draws again.</p>
+      <div class="steps">
+        <div class="step" id="step-plan"><b>Scene director</b>Muse Spark splits your story into scenes</div>
+        <div class="step" id="step-draw"><b>Artist + Cultural Eye</b>Muse Image draws, Muse Spark checks</div>
+        <div class="step" id="step-edit"><b>Editor</b>Your voice, camera moves and captions</div>
+      </div>
+      <div class="now" id="now">Starting...</div>
+      <div id="scenes"></div>
+      <details>
+        <summary>Show the agent's full notes</summary>
+        <pre id="log"></pre>
+      </details>
+    </section>
+
+    <section class="card hidden result" id="result-card">
+      <h2>3. Your video</h2>
+      <video id="video" controls playsinline></video>
+      <a class="download" id="download" download="talk_am_video.mp4">Download video</a>
+    </section>
+
+    <footer>Built with Meta's Muse Spark and Muse Image for the Meta Global AI Developer Hackathon.</footer>
+  </main>
+
+  <script>
+    const EXAMPLE = "Mama Ngozi don open her shop for Ariaria market! Fresh smoked fish, dry pepper, crayfish wey go make your soup sweet well well. You no need waka far again. Her prices dey reasonable, and she go even dash you small extra if you be regular customer. Come early in the morning before everything finish. Ask anybody for the market, dem go show you Mama Ngozi stall. Na quality she dey sell, no be story!";
+
+    const $ = (id) => document.getElementById(id);
+    const form = $("form"), voice = $("voice"), go = $("go");
+    let jobId = null, seen = 0, timer = null;
+
+    $("example").onclick = () => { $("script").value = EXAMPLE; };
+    voice.onchange = () => {
+      const file = voice.files[0];
+      $("drop").classList.toggle("has-file", !!file);
+      $("drop-text").textContent = file ? `🎙️ ${file.name}` : "Tap to add your voice note";
+    };
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      $("error").textContent = "";
+      go.disabled = true;
+      go.textContent = "Uploading...";
+      try {
+        const res = await fetch("/make", { method: "POST", body: new FormData(form) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Something went wrong.");
+        jobId = data.job_id;
+        seen = 0;
+        $("scenes").innerHTML = "";
+        $("log").textContent = "";
+        $("result-card").classList.add("hidden");
+        $("work-card").classList.remove("hidden");
+        ["plan", "draw", "edit"].forEach((s) => $("step-" + s).className = "step");
+        setStep("plan");
+        go.textContent = "Making your video...";
+        $("work-card").scrollIntoView({ behavior: "smooth" });
+        timer = setInterval(poll, 2000);
+      } catch (err) {
+        $("error").textContent = err.message;
+        go.disabled = false;
+        go.textContent = "Make my video";
+      }
+    };
+
+    function setStep(name) {
+      const order = ["plan", "draw", "edit"];
+      order.forEach((s, i) => {
+        const el = $("step-" + s);
+        if (i < order.indexOf(name)) el.className = "step done";
+        else if (s === name) el.className = "step active";
+      });
+    }
+
+    function sceneBox(n) {
+      let box = $("scene-" + n);
+      if (!box) {
+        box = document.createElement("div");
+        box.className = "scene";
+        box.id = "scene-" + n;
+        box.innerHTML = `<h3>Scene ${n}</h3><div class="words"></div><div class="tries"></div>`;
+        $("scenes").appendChild(box);
+      }
+      return box;
+    }
+
+    function tryBox(n, t) {
+      let el = $(`try-${n}-${t}`);
+      if (!el) {
+        el = document.createElement("div");
+        el.className = "try";
+        el.id = `try-${n}-${t}`;
+        el.innerHTML = `<div class="wait">Drawing try ${t}...</div><div class="info">Try ${t}</div>`;
+        sceneBox(n).querySelector(".tries").appendChild(el);
+      }
+      return el;
+    }
+
+    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const fileUrl = (name) => `/jobs/${jobId}/${encodeURIComponent(name)}`;
+
+    function show(ev) {
+      if (ev.text) $("log").textContent += ev.text + "\n";
+      switch (ev.type) {
+        case "plan":
+          ev.scenes.forEach((s) => { sceneBox(s.number).querySelector(".words").textContent = `“${s.narration}”`; });
+          setStep("draw");
+          $("now").textContent = `Planned ${ev.scenes.length} scenes. Drawing now...`;
+          break;
+        case "scene":
+          sceneBox(ev.scene).querySelector(".words").textContent = `“${ev.narration}”`;
+          break;
+        case "drawing":
+          tryBox(ev.scene, ev.try);
+          $("now").textContent = `Scene ${ev.scene}: Muse Image is drawing (try ${ev.try})...`;
+          break;
+        case "checking":
+          $("now").textContent = `Scene ${ev.scene}: Cultural Eye is looking at the picture...`;
+          break;
+        case "verdict": {
+          const el = tryBox(ev.scene, ev.try);
+          const cls = ev.passed ? "pass" : "redo";
+          const problems = (ev.problems || []).map((p) => `<li>${esc(p)}</li>`).join("");
+          el.innerHTML = `<img src="${fileUrl(ev.image)}" alt="Scene ${ev.scene} try ${ev.try}">
+            <div class="info"><span class="badge ${cls}">${ev.passed ? "PASS" : "REDO"} ${ev.score}/10</span>
+            ${problems ? `<ul>${problems}</ul>` : ""}
+            <div class="blind"><b>Blind look:</b> ${esc(ev.what_i_see || "")}</div></div>`;
+          break;
+        }
+        case "fixing":
+          $("now").textContent = `Scene ${ev.scene}: fixing the prompt and drawing again...`;
+          break;
+        case "kept":
+          tryBox(ev.scene, ev.try).classList.add("kept");
+          break;
+        case "agent_done":
+          setStep("edit");
+          $("now").textContent = "Filming the scenes and adding your voice...";
+          break;
+        case "log":
+          if (!/^\s*$/.test(ev.text || "")) $("now").textContent = ev.text;
+          break;
+        case "error":
+          $("now").textContent = ev.text;
+          $("now").classList.add("idle");
+          break;
+      }
+    }
+
+    async function poll() {
+      try {
+        const res = await fetch(`/status/${jobId}?since=${seen}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        data.events.forEach(show);
+        seen = data.total;
+        if (data.status === "done" || data.status === "error") {
+          clearInterval(timer);
+          go.disabled = false;
+          go.textContent = "Make another video";
+          if (data.status === "done") {
+            ["plan", "draw", "edit"].forEach((s) => $("step-" + s).className = "step done");
+            $("now").textContent = "Your video is ready!";
+            $("now").classList.add("idle");
+            const url = fileUrl(data.video);
+            $("video").src = url;
+            $("download").href = url;
+            $("result-card").classList.remove("hidden");
+            $("result-card").scrollIntoView({ behavior: "smooth" });
+          }
+        }
+      } catch (err) { /* try again on the next tick */ }
+    }
+  </script>
+</body>
+</html>

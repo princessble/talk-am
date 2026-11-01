@@ -5,19 +5,17 @@ import subprocess
 
 FPS = 30
 WIDTH, HEIGHT = 1080, 1920
-CLIPS = "output/clips"
 
 
 def run(cmd: list[str]) -> subprocess.CompletedProcess:
-    """Run ffmpeg. If it fails, show the last lines of its error message."""
+    """Run ffmpeg. If it fails, stop with the last lines of its error message."""
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
-        print("ffmpeg error:\n" + "\n".join(result.stderr.strip().splitlines()[-15:]))
-        raise SystemExit(1)
+        raise RuntimeError("ffmpeg error:\n" + "\n".join(result.stderr.strip().splitlines()[-15:]))
     return result
 
 
-def prepare_voice(voice_in: str, wav_out: str = "output/voice.wav") -> str:
+def prepare_voice(voice_in: str, wav_out: str) -> str:
     """Turn the voice note into clean mono WAV."""
     run(["ffmpeg", "-y", "-i", voice_in, "-ac", "1", "-ar", "48000", wav_out])
     return wav_out
@@ -84,7 +82,9 @@ def write_captions(scenes: list[dict], talk: list[tuple[float, float]], path: st
     ]
     for scene, (start, end) in zip(scenes, talk):
         words = scene["narration"].replace("{", "").replace("}", "").split()
-        groups = [words[i:i + chunk] for i in range(0, len(words), chunk)]
+        count = max(1, -(-len(words) // chunk))  # how many caption lines this scene needs
+        size = len(words) / count  # spread the words evenly, so no word is left alone
+        groups = [words[round(i * size):round((i + 1) * size)] for i in range(count)]
         step = (end - start) / max(len(words), 1)
         t = start
         for group in groups:
@@ -127,11 +127,17 @@ def render_scene(image: str, seconds: float, out: str, move: int) -> str:
     return out
 
 
-def make_video(plan: dict, voice_in: str, out: str = "output/talk_am_video.mp4") -> str:
-    os.makedirs(CLIPS, exist_ok=True)
-    wav = prepare_voice(voice_in)
+def make_video(plan: dict, voice_in: str, folder: str = "output", say=print) -> str:
+    """Join the scene pictures, the creator's voice and captions into one video."""
+    folder = folder.replace("\\", "/")  # ffmpeg needs forward slashes
+    clips_dir = f"{folder}/clips"
+    os.makedirs(clips_dir, exist_ok=True)
+    out = f"{folder}/talk_am_video.mp4"
+    captions = f"{folder}/captions.ass"
+
+    wav = prepare_voice(voice_in, f"{folder}/voice.wav")
     duration, pauses = listen(wav)
-    print(f"Voice: {duration:.1f}s with {len(pauses)} pauses")
+    say(f"Voice: {duration:.1f}s with {len(pauses)} pauses")
 
     scenes = plan["scenes"]
     timing, talk = plan_timing(scenes, duration, pauses)
@@ -141,12 +147,12 @@ def make_video(plan: dict, voice_in: str, out: str = "output/talk_am_video.mp4")
     clips = []
     for i, (scene, (start, end)) in enumerate(zip(scenes, timing)):
         extra = (FADE / 2 if i in (0, last) else FADE) if last > 0 else 0
-        path = os.path.join(CLIPS, f"clip_{scene['number']}.mp4")
-        print(f"Scene {scene['number']}: {start:.2f}s to {end:.2f}s")
-        render_scene(f"output/scene_{scene['number']}.png", end - start + extra, path, move=i)
+        path = f"{clips_dir}/clip_{scene['number']}.mp4"
+        say(f"Filming scene {scene['number']}: {start:.2f}s to {end:.2f}s")
+        render_scene(f"{folder}/scene_{scene['number']}.png", end - start + extra, path, move=i)
         clips.append(path)
 
-    write_captions(scenes, talk, "output/captions.ass")
+    write_captions(scenes, talk, captions)
 
     # Blend the clips together, then add captions and gentle fades
     inputs, chain, label = [], [], "0:v"
@@ -158,7 +164,7 @@ def make_video(plan: dict, voice_in: str, out: str = "output/talk_am_video.mp4")
         label = f"v{i}"
     fade_out = max(duration - 0.6, 0)
     chain.append(
-        f"[{label}]subtitles=output/captions.ass,"
+        f"[{label}]subtitles={captions},"
         f"fade=t=in:st=0:d=0.4,fade=t=out:st={fade_out:.2f}:d=0.6[vout]"
     )
     run([
@@ -170,11 +176,11 @@ def make_video(plan: dict, voice_in: str, out: str = "output/talk_am_video.mp4")
         "-c:a", "aac", "-b:a", "160k", "-shortest", "-movflags", "+faststart",
         out,
     ])
-    print(f"Video ready: {out}")
+    say(f"Video ready: {out}")
     return out
 
 
 if __name__ == "__main__":
     with open("output/scenes.json", encoding="utf-8") as f:
         plan = json.load(f)
-    make_video(plan, "voice.m4a")
+    make_video(plan, "voice.m4a", "output")
