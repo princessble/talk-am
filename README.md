@@ -78,7 +78,7 @@ Deploy: `modal deploy modal_app.py` (needs a Modal secret called `talkamsecrets`
 
 - **Muse Voice Transcribe:** transcribe the voice note itself, so creators don't need to type a script and captions are timed word by word.
 - **SAM 3.1 "living photo":** cut the characters out of each scene so the background and people move in separate layers.
-- More Nigerian languages: Yoruba, Hausa and Igbo.
+- More Nigerian languages: Yoruba, Hausa, Igbo, Ijaw and Efik, including smaller languages that most AI tools don't support yet.
 
 ## Built by
 
