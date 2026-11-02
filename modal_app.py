@@ -12,7 +12,7 @@ image = (
     .add_local_dir(
         ".",
         remote_path="/root/talkam",
-        ignore=[".env", "venv", ".git", "output", "jobs", "__pycache__", "voice.m4a", "*.wav", "*.mp4"],
+        ignore=[".env", "venv", ".git", "output", "jobs", "__pycache__", "voice.m4a", "*.mp4"],
     )
 )
 
