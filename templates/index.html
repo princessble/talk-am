@@ -175,7 +175,7 @@
       <form id="form">
         <div class="row" style="justify-content: space-between;">
           <label for="script" style="margin: 0;">Script</label>
-          <button type="button" class="ghost" id="example">Use the Mama Ngozi example</button>
+          <button type="button" class="ghost" id="example">Try the Mama Ngozi example (script + voice note)</button>
         </div>
         <textarea id="script" name="script" maxlength="1500" placeholder="Mama Ngozi don open her shop for Ariaria market!..." required></textarea>
 
@@ -221,13 +221,30 @@
   </main>
 
   <script>
-    const EXAMPLE = "Mama Ngozi don open her shop for Ariaria market! Fresh smoked fish, dry pepper, crayfish wey go make your soup sweet well well. You no need waka far again. Her prices dey reasonable, and she go even dash you small extra if you be regular customer. Come early in the morning before everything finish. Ask anybody for the market, dem go show you Mama Ngozi stall. Na quality she dey sell, no be story!";
+    const EXAMPLE = "Gba ga mgbam! My people, Mama Ngozi don open her shop for Ariaria Main Market! She dey sell fresh smoked fish, dry pepper nkoo! She even join crayfish follow body, wey go make your ogbonge soup sweet wella!\nYou no need to waka go far this time. Her prices dey reasonable, and she go even dash you small extra if you be regular customer. Come early in the morning before everything finish o! No talk say I no tell you!\nAsk anybody for the market, them go show you Mama Ngozi shop. Na quality she dey sell, no be story at all!";
 
     const $ = (id) => document.getElementById(id);
     const form = $("form"), voice = $("voice"), go = $("go");
     let jobId = null, seen = 0, timer = null;
 
-    $("example").onclick = () => { $("script").value = EXAMPLE; };
+    $("example").onclick = async () => {
+      $("script").value = EXAMPLE;
+      $("drop-text").textContent = "Loading the example voice note...";
+      try {
+        const res = await fetch("/static/example_voice.wav");
+        if (!res.ok) throw new Error();
+        const blob = await res.blob();
+        const file = new File([blob], "mama_ngozi_voice_note.wav", { type: "audio/wav" });
+        const box = new DataTransfer();
+        box.items.add(file);
+        voice.files = box.files;
+        voice.onchange();
+        $("drop-text").textContent = "🎙️ mama_ngozi_voice_note.wav (example voice note added)";
+      } catch (err) {
+        $("drop-text").textContent = "Tap to add your voice note (.m4a, .mp3, .ogg, .wav)";
+        $("error").textContent = "Couldn't load the example voice note. Please add your own.";
+      }
+    };
     voice.onchange = () => {
       const file = voice.files[0];
       $("drop").classList.toggle("has-file", !!file);
